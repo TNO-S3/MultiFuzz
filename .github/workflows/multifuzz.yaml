@@ -32,7 +32,7 @@ jobs:
         run: |
           java -jar evomaster.jar \
             --blackBox true \
-            --bbSwaggerUrl openapi3.yml \
+            --bbSwaggerUrl ${{ inputs.openapi_file }} \
             --outputFormat PYTHON_UNITTEST \
             --maxTime 60s \
             --outputFolder generated_tests \
@@ -66,7 +66,7 @@ jobs:
             --report \
             --log-level info \
             --timeout 60 \
-            ../openapi3.yml
+            ../${{ inputs.openapi_file }}
 
       - name: Upload Fuzzing Report
         uses: actions/upload-artifact@v4
@@ -138,7 +138,7 @@ jobs:
           # Run container
           docker run \
             --network restler \
-            -v ./openapi3.yml:/workspace/openapi3.yml:ro \
+            -v ${{ inputs.openapi_file }}:/workspace/openapi3.yml:ro \
             -v ./services/restler/output:/workspace/output:rw \
             -v ./services/restler/config:/service/config:rw \
             -e TARGET_IP=program_under_test \
