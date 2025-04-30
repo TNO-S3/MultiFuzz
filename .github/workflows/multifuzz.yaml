@@ -73,6 +73,7 @@ jobs:
 
       - name: Run WuppieFuzz Fuzzing Campaign
         run: |
+          mkdir Wuppiefuzz
           cd WuppieFuzz
           wuppiefuzz fuzz \
             --report \
@@ -140,9 +141,7 @@ jobs:
           ls -la $BASE_DIR/services/restler/output
 
       - name: Fix script permissions
-        run: |
-          chmod +x services/restler/config/run-restler.sh
-          chmod +x services/restler/config/*.sh  # Ensure all scripts are executable
+        run: chmod +x services/restler/config/*.sh  # Ensure all scripts are executable
 
       - name: Build RESTler container
         run: docker build -t restler --file services/restler/Dockerfile.restler services/restler
