@@ -146,7 +146,7 @@ jobs:
           export COMPOSE_DOCKER_CLI_BUILD=1
           # Run container
           docker run \
-            --network restler restler \
+            --network restler \
             -v ./openapi3.yml:/workspace/openapi3.yml:ro \
             -v ./services/restler/output:/workspace/output:rw \
             -v ./services/restler/config:/service/config:rw \
