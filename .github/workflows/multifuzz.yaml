@@ -2,7 +2,7 @@ name: Fuzz VAmPI with WuppieFuzz, EvoMaster, RESTler
 
 on:
   push:
-    branches: [main, publish-action]
+    branches: [main]
   pull_request:
     branches: [main]
 
@@ -13,13 +13,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Start VAmPI Container
+      - name: Start program under test
         run: |
-          docker run -d --name program_under_test -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
-          sleep 10
-
-      - name: Initialize VAmPI Database
-        run: curl -s http://localhost:5000/createdb
+          docker run -d --name program_under_test -p 5000:${{ inputs.container_port }} ${{ inputs.docker_container }}
+          until [ "`docker inspect -f {{.State.Running}} program_under_test`"=="true" ]; do sleep 0.1; done
 
       - name: Set up Java
         uses: actions/setup-java@v3
@@ -56,13 +53,10 @@ jobs:
       - name: Download and install WuppieFuzz
         run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/TNO-S3/WuppieFuzz/releases/download/v1.2.0/wuppiefuzz-installer.sh | sh
 
-      - name: Start VAmPI Container (Vulnerable Mode)
+      - name: Start program under test
         run: |
-          docker run -d --name program_under_test -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
-          sleep 10
-
-      - name: Initialize VAmPI Database
-        run: curl -s http://localhost:5000/createdb
+          docker run -d --name program_under_test -p 5000:${{ inputs.container_port }} ${{ inputs.docker_container }}
+          until [ "`docker inspect -f {{.State.Running}} program_under_test`"=="true" ]; do sleep 0.1; done
 
       - name: Run WuppieFuzz Fuzzing Campaign
         run: |
@@ -105,13 +99,10 @@ jobs:
       - name: Create docker network
         run: docker network create restler
 
-      - name: Start VAmPI Container (Vulnerable Mode)
+      - name: Start program under test
         run: |
-          docker run -d --network restler --name program_under_test -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
-          sleep 10
-
-      - name: Initialize VAmPI Database
-        run: curl -s http://localhost:5000/createdb
+          docker run -d --network restler --name program_under_test -p 5000:${{ inputs.container_port }} ${{ inputs.docker_container }}
+          until [ "`docker inspect -f {{.State.Running}} program_under_test`"=="true" ]; do sleep 0.1; done
 
       # Set up Docker Buildx for better caching
       - name: Set up Docker Buildx
