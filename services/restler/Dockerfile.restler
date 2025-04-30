@@ -34,7 +34,7 @@ ENV PATH="/restler_bin/restler:${PATH}"
 WORKDIR /workspace
 
 # Ensure the container uses the same network as other services
-ENV DOCKER_NETWORK="restler-net"
+ENV DOCKER_NETWORK="restler"
 
 # Create service directory and copy configuration files
 RUN mkdir -p /service/config
@@ -44,4 +44,4 @@ RUN chmod +x /service/config/entrypoint.sh && \
     chmod +x /service/config/run-restler.sh
 
 # Default command
-CMD ["/service/config/entrypoint.sh"]
+CMD ["bash", "-c", "/service/config/run-restler.sh"]

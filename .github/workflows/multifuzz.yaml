@@ -15,7 +15,7 @@ jobs:
 
       - name: Start VAmPI Container
         run: |
-          docker run -d --name vampi -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
+          docker run -d --name program_under_test -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
           sleep 10
 
       - name: Initialize VAmPI Database
@@ -58,7 +58,7 @@ jobs:
 
       - name: Start VAmPI Container (Vulnerable Mode)
         run: |
-          docker run -d --name vampi -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
+          docker run -d --name program_under_test -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
           sleep 10
 
       - name: Initialize VAmPI Database
@@ -108,6 +108,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-restler-
 
+      - name: Create docker network
+        run: docker network create restler
+
+      - name: Start VAmPI Container (Vulnerable Mode)
+        run: |
+          docker run -d --network restler --name program_under_test -e vulnerable=1 -p 5000:5000 erev0s/vampi:latest
+          sleep 10
+
+      - name: Initialize VAmPI Database
+        run: curl -s http://localhost:5000/createdb
+
       # Set up Docker Buildx for better caching
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -133,25 +144,30 @@ jobs:
           chmod +x services/restler/config/run-restler.sh
           chmod +x services/restler/config/*.sh  # Ensure all scripts are executable
 
-      - name: Run RESTler and VAmPI
+      - name: Build RESTler container
+        run: docker build -t restler --file services/restler/Dockerfile.restler services/restler
+
+      - name: Run RESTler
         run: |
           cd services/restler
           # Export BuildKit environment variables
           export DOCKER_BUILDKIT=1
           export COMPOSE_DOCKER_CLI_BUILD=1
-          # Run docker compose
-          docker compose -f docker-compose.restler.yml up --abort-on-container-exit
+          # Run container
+          docker run \
+            --network restler restler \
+            -v ./openapi3.yml:/workspace/openapi3.yml:ro \
+            -v ./output:/workspace/output:rw \
+            -v ./config:/service/config:rw \
+            -e TARGET_IP=program_under_test \
+            -e TARGET_PORT=5000 \
+            -e VULNERABLE_MODE=1 \
+            -e BASE_DIR=/workspace \
+            restler bash -c /service/config/run-restler.sh
           echo "=== Listing output directory structure ==="
           ls -R $BASE_DIR/services/restler/output || true
           echo "=== Detailed output directory listing ==="
           find $BASE_DIR/services/restler/output -type f -exec ls -l {} \; || true
-
-      - name: Check Container Logs
-        if: always()
-        run: |
-          docker compose -f services/restler/docker-compose.restler.yml logs vampi || true
-          docker compose -f services/restler/docker-compose.restler.yml logs restler || true
-          docker compose -f services/restler/docker-compose.restler.yml logs init-vampi || true
 
       - name: Upload RESTler Test Results
         uses: actions/upload-artifact@v4
