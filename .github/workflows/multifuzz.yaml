@@ -64,13 +64,6 @@ jobs:
       - name: Initialize VAmPI Database
         run: curl -s http://localhost:5000/createdb
 
-      # Add caching for WuppieFuzz corpus
-      - name: Cache WuppieFuzz corpus
-        uses: actions/cache@v4.2.2
-        with: 
-          path: WuppieFuzz/corpus_directory
-          key: ${{ runner.os }}-corpus-${{ hashFiles('openapi3.yml') }}
-
       - name: Run WuppieFuzz Fuzzing Campaign
         run: |
           mkdir WuppieFuzz
