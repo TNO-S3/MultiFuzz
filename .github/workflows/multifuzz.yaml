@@ -2,7 +2,7 @@ name: Fuzz VAmPI with WuppieFuzz, EvoMaster, RESTler
 
 on:
   push:
-    branches: [main]
+    branches: [main, publish-action]
   pull_request:
     branches: [main]
 
@@ -53,51 +53,8 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Set up Rust Toolchain first so cargo is available
-      - name: rust-toolchain
-        uses: actions-rs/toolchain@v1.0.6
-        with:
-          toolchain: stable
-          override: true
-
-      # Clone WuppieFuzz Repository before caching
-      - name: Clone WuppieFuzz Repository
-        run: git clone https://github.com/TNO-S3/WuppieFuzz.git
-
-      # Add caching for Rust dependencies and build artifacts
-      - name: Cache Rust dependencies and build artifacts
-        id: cache-cargo
-        uses: actions/cache@v4.2.2
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            WuppieFuzz/target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('WuppieFuzz/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
-
-      # Build WuppieFuzz only if cache miss
-      - name: Build WuppieFuzz
-        if: steps.cache-cargo.outputs.cache-hit != 'true'
-        run: |
-          cd WuppieFuzz
-          cargo build --release
-          # Touch a file to indicate the build is complete
-          touch target/release/.build-complete
-
-      # Verify build artifacts exist
-      - name: Verify WuppieFuzz Build
-        run: |
-          if [ ! -f "WuppieFuzz/target/release/wuppiefuzz" ]; then
-            echo "WuppieFuzz binary not found, building..."
-            cd WuppieFuzz
-            cargo build --release
-          else
-            echo "Using cached WuppieFuzz binary"
-          fi
+      - name: Download and install WuppieFuzz
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/TNO-S3/WuppieFuzz/releases/download/v1.2.0/wuppiefuzz-installer.sh | sh
 
       - name: Start VAmPI Container (Vulnerable Mode)
         run: |
@@ -114,18 +71,12 @@ jobs:
           path: WuppieFuzz/corpus_directory
           key: ${{ runner.os }}-corpus-${{ hashFiles('services/vampi/openapi_specs/openapi3.yml') }}
 
-      - name: Generate Initial Corpus for Fuzzing
-        run: |
-          cd WuppieFuzz
-          ./target/release/wuppiefuzz output-corpus --openapi-spec ../services/vampi/openapi_specs/openapi3.yml corpus_directory
-
       - name: Run WuppieFuzz Fuzzing Campaign
         run: |
           cd WuppieFuzz
-          ./target/release/wuppiefuzz fuzz \
+          wuppiefuzz fuzz \
             --report \
             --log-level info \
-            --initial-corpus corpus_directory \
             --timeout 60 \
             ../services/vampi/openapi_specs/openapi3.yml
 
